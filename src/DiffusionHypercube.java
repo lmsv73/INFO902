@@ -3,6 +3,7 @@ import mpi.*;
 public class DiffusionHypercube {
 
     public static void main(String args[]) throws Exception {
+        // Version statique
         /*
         MPI.Init(args);
         int me = MPI.COMM_WORLD.Rank();
@@ -34,6 +35,7 @@ public class DiffusionHypercube {
         }
         MPI.Finalize();
         */
+
         final DiffusionHypercube diffusionHypercube = new DiffusionHypercube();
         if (args.length <= 3) {
             diffusionHypercube.start(args, 0);
@@ -44,7 +46,7 @@ public class DiffusionHypercube {
         }
     }
 
-    private void start(final String args[], final int first) {
+    private void start(final String args[], final int from) {
         MPI.Init(args);
         int me = MPI.COMM_WORLD.Rank();
         int size = MPI.COMM_WORLD.Size();
@@ -53,16 +55,16 @@ public class DiffusionHypercube {
         int last = (size / 2 + me) % size;
         int next = (me + 1) % size;
         int prev = (me - 1 + size) % size;
-        if (first < 0 || first >= size) {
+        if (from < 0 || from >= size) {
             System.err.println("The given node must be in [0, " + (size - 1) + "]");
             MPI.Finalize();
             return;
         }
         String bufferString[] = new String[1];
-        bufferString[0] = "HELLO !";
+        bufferString[0] = "hello";
 
-        if (me == first) {
-            System.out.println("<" + me + "> send data");
+        if (me == from) {
+            System.out.println("<" + me + "> send to " + prev + " and " + next);
             MPI.COMM_WORLD.Send(bufferString, 0, 1, MPI.OBJECT, (me + 1) % size, 99);
             if (me - 1 < 0) {
                 MPI.COMM_WORLD.Send(bufferString, 0, 1, MPI.OBJECT, size - 1, 99);
@@ -72,17 +74,19 @@ public class DiffusionHypercube {
             }
         }
         else {
-            if ((me - first + size) % size < lastDef) {
+            if ((me - from + size) % size < lastDef) {
                 final Status mps = MPI.COMM_WORLD.Recv(bufferString, 0, 1, MPI.OBJECT, prev, 99);
-                System.out.println("I'm <" + me + ">: receive <" + bufferString[0] + "> from " + mps.source);
+                System.out.println("<" + me + ">: receive <" + bufferString[0] + "> from " + mps.source);
                 if (next <= last) {
+                    System.out.println("<" + me + ">: send <" + bufferString[0] + "> to " + next);
                     MPI.COMM_WORLD.Send(bufferString, 0, 1, MPI.OBJECT, next, 99);
                 }
             }
             else {
                 final Status mps = MPI.COMM_WORLD.Recv(bufferString, 0, 1, MPI.OBJECT, next, 99);
-                System.out.println("I'm <" + me + ">: receive <" + bufferString[0] + "> from " + mps.source);
+                System.out.println("<" + me + ">: receive <" + bufferString[0] + "> from " + mps.source);
                 if (prev > last) {
+                    System.out.println("<" + me + ">: send <" + bufferString[0] + "> to " + prev);
                     MPI.COMM_WORLD.Send(bufferString, 0, 1, MPI.OBJECT, prev, 99);
                 }
             }
